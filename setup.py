@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from setuptools import find_packages, setup
-from tools import setup_helpers
+from project_tools import setup_helpers
 
 ROOT_DIR = Path(__file__).parent.resolve()
 
@@ -18,25 +18,46 @@ def read(*names, **kwargs):
         return fp.read()
 
 
-def _get_version():
-    try:
-        cmd = ["git", "rev-parse", "HEAD"]
-        sha = subprocess.check_output(cmd, cwd=str(ROOT_DIR)).decode("ascii").strip()
-    except Exception:
-        sha = None
+#def _get_version():
+#    try:
+#        cmd = ["git", "rev-parse", "HEAD"]
+#        sha = subprocess.check_output(cmd, cwd=str(ROOT_DIR)).decode("ascii").strip()
+#    except Exception:
+#        sha = None
+#
+#    if "BUILD_VERSION" in os.environ:
+#        version = os.environ["BUILD_VERSION"]
+#    else:
+#        with open(os.path.join(ROOT_DIR, "version.txt"), "r") as f:
+#            version = f.readline().strip()
+#        if sha is not None:
+#            version += "+" + sha[:7]
+#
+#    if sha is None:
+#        sha = "Unknown"
+#    return version, sha
 
+def _get_version():
+    version_file = ROOT_DIR / "version.txt"
+
+    # Step 1: Read version from environment variable if present
     if "BUILD_VERSION" in os.environ:
         version = os.environ["BUILD_VERSION"]
+    # Step 2: Read version from version.txt
+    elif version_file.exists():
+        version = version_file.read_text().strip()
     else:
-        with open(os.path.join(ROOT_DIR, "version.txt"), "r") as f:
-            version = f.readline().strip()
-        if sha is not None:
-            version += "+" + sha[:7]
+        version = "0.0.0"  # fallback if nothing else works
 
-    if sha is None:
+    # Step 3: Try to append Git SHA if available
+    try:
+        import subprocess
+        sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=str(ROOT_DIR)).decode("ascii").strip()
+        version += f"+{sha[:7]}"
+    except Exception:
         sha = "Unknown"
-    return version, sha
 
+    return version, sha
 
 def _export_version(version, sha):
     version_path = ROOT_DIR / "torchtext" / "version.py"
@@ -89,7 +110,7 @@ class clean(distutils.command.clean.clean):
                 shutil.rmtree(str(path), ignore_errors=True)
 
 
-_init_submodule()
+#_init_submodule()
 setup_info = dict(
     # Metadata
     name="torchtext",
